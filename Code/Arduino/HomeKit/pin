@@ -1,0 +1,3 @@
+ESP32         STM32
+GPIO16(RX2)   PC6 Uart6_TX
+GPIO17(TX2)   PC7 Uart6_RX

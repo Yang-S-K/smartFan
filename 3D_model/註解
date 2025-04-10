@@ -1,1 +1,27 @@
+ipt
+6.ESP-32_Predeterminado                    ESP32板子
+battery                                    電池組自製圖檔(兩顆18650 12V)
+blower                                     風扇扇葉
+COPPER_PILLER_M3_6mm                       M3 6mm銅柱
+COPPER_PILLER_M3_12mm                      M3 12mm銅柱
+COPPER_PILLER_M3_20mm                      M3 20mm銅柱
+M2x20                                      M2 20mm銅柱
+DS18B20                                    溫度感測器自製圖檔
+holder                                     風扇支架
+IR_Receiver                                紅外線遙控接收自製圖檔
+keypad-16KeyMembrane                       4*4鍵盤
+L298N Driver                               馬達驅動器
+LCD - AP203                                LCD點陣螢幕
+LM2596_Modelo_3D                           降壓模組
+NUCLEO-F429ZI--3DModel-STEP-56544          NUCLEO-F429ZI板子
+PCB2x8                                     洞洞板
+PIR SENSOR hc-sr501                        人體感測器
+protection_cover_back                      風扇(馬達)
+protection_cover_front                     風扇(前擋)
+rf500tb                                    馬達自製圖檔
+SG90 - Micro Servo 9g - Tower Pro.3_Pea   9g伺服馬達連桿
+SG90_v7                                    9g伺服馬達
 
+iam
+com                      總圖檔
+IC                       預計IC元件布局

@@ -8,6 +8,7 @@ PC6   ESP32 GPIO16(RX2)   Uart6_TX
 PC7   ESP32 GPIO17(TX2)   Uart6_RX
 PB8   LCD_SCL	            I2C_SCL
 PB9   LCD_SDA             I2C_SDA
+PA0   IR_Reciver          TIM5_CH1
 
 KeyPad Left to Right Pin
 PC8   GPIO_Output

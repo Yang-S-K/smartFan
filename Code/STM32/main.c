@@ -57,6 +57,7 @@ I2C_HandleTypeDef hi2c1;
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim4;
+TIM_HandleTypeDef htim5;
 
 UART_HandleTypeDef huart3;
 UART_HandleTypeDef huart6;
@@ -77,6 +78,7 @@ static void MX_USART6_UART_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_TIM4_Init(void);
+static void MX_TIM5_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -88,6 +90,11 @@ char strC1[16];
 char strC2[16];
 
 int PIR_Flags=1;
+volatile uint8_t bitCount = 0;
+volatile uint8_t isStartCaptured = 0;
+volatile uint32_t receivedData = 0;
+static volatile uint32_t IC_Value = 0;
+char ir_value = '\0';
 /* USER CODE END 0 */
 
 /**
@@ -127,21 +134,26 @@ int main(void)
   MX_TIM2_Init();
   MX_I2C1_Init();
   MX_TIM4_Init();
+  MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
   HAL_TIM_Base_Start_IT(&htim2);
+  HAL_TIM_IC_Start_IT(&htim5, TIM_CHANNEL_1);
   Motor_Init(&htim1);
   Keypad_Init();
   Calibrate_Servo_Zero();
   HAL_ADC_Start(&hadc1);
   LCD_Init();
   LCD_Clear();
-  uint32_t lastUpdate = 0; // 記�?��?後�?次更?��??��??
+  uint32_t lastUpdate = 0; // �????? ?  ?�????? ?次更?  ??  ??
   int oldFanState = -1,oldFanSpeed = -1,oldFanhAngle = -1,oldFanvAngle = -1;
   float temperature = ADC1_temperature(),oldtemperature=25;
   int hAngle_state=0,vAngle_state=0,hAngle=0,vAngle=0,hstep=1,vstep=1;
   char tempKey='N';
+  static uint32_t lastIRProcessTick = 0;
+
+//  FanData fanStatus = ESP32_GetFanData();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -154,21 +166,22 @@ int main(void)
 
 //	  /*
 
-//	  temperature = Get_Temperature(); //�?????30秒更?��溫度
-	  temperature = ADC1_temperature(); //?��??�更?��溫度
-	  ESP32_UART_Receive(); //??��?�ESP32??��??
+//	  temperature = Get_Temperature(); // ??????????30秒更?  溫度
+
+	  temperature = ADC1_temperature(); //?  ?? ?��?  溫度
+	  ESP32_UART_Receive(); //??  ? ESP32??  ??
 	  FanData fanStatus = ESP32_GetFanData();
 
-	  if(HAL_GPIO_ReadPin(USER_Btn_GPIO_Port, USER_Btn_Pin)==1){//STM32上�?��?�觸?��
+	  if(HAL_GPIO_ReadPin(USER_Btn_GPIO_Port, USER_Btn_Pin)==1){//STM32�????? ?  ? �??????
     	  fanStatus.fanState = !fanStatus.fanState;
 	  }
 
 
-	  if(PIR_Flags==0){//PIR??��?�器 ?��人自??��?��?�風???
+	  if(PIR_Flags==0){//PIR??  ? ?�� ?  人自??  ?  ? �????????
 		  fanStatus.fanState=0;
 	  }
 
-	  if(fanStatus.fanState==0){//?��??�State?��?��馬�??
+	  if(fanStatus.fanState==0){//?  ?? State?  ?  �????? ??
 		  Motor_Stop();
 	  }else{
 		  if(fanStatus.fanState>1){
@@ -177,7 +190,7 @@ int main(void)
 		  Motor_SetSpeed(fanStatus.fanSpeed);
 	  }
 
-	  //?��顆伺??�馬??��?�度?��?��
+	  //?  顆伺?? �???????  ? �??????  ?
 	  if(hAngle_state){
 		  if(hAngle<=0||hAngle>=100){
 			  hstep = -hstep;
@@ -276,26 +289,145 @@ int main(void)
 			  default:
 				  break;
 		  }
-		  HAL_Delay(300); // ?��止�??續觸?��
 	  }
+	  if (32 <= bitCount){
+		  if (((receivedData>>16) & 0xFF) == ((~(receivedData>>24)) & 0xFF)){
+			switch(receivedData) {
+				case 0xB946FF00:  // up
+					ir_value = 'U';
+					  vAngle_state=0;
+					  if(fanStatus.vAngle>=100){
+						  fanStatus.vAngle=100;
+					  }else{
+						  fanStatus.vAngle+=10;
+					  }
+					break;
+				case 0xEA15FF00:  // down
+					ir_value = 'D';
+					  vAngle_state=0;
+					  if(fanStatus.vAngle<=0){
+						  fanStatus.vAngle=0;
+					  }else{
+						  fanStatus.vAngle-=10;
+					  }
+					break;
+				case 0xBB44FF00:  // left
+					ir_value = 'L';
+					  hAngle_state=0;
+					  if(fanStatus.hAngle<=0){
+						  fanStatus.hAngle=0;
+					  }else{
+						  fanStatus.hAngle-=10;
+					  }
+					break;
+				case 0xBC43FF00:  // right
+					ir_value = 'R';
+					  hAngle_state=0;
+					  if(fanStatus.hAngle>=100){
+						  fanStatus.hAngle=100;
+					  }else{
+						  fanStatus.hAngle+=10;
+					  }
+					break;
+				case 0xBF40FF00:  // OK
+					ir_value = 'O';
+					  fanStatus.fanState = !fanStatus.fanState;
+					break;
+				case 0xE916FF00:
+					ir_value = '1';
+					fanStatus.fanSpeed=10;
+					break;
+				case 0xE619FF00:
+					ir_value = '2';
+					fanStatus.fanSpeed=20;
+					break;
+				case 0xF20DFF00:
+					ir_value = '3';
+					fanStatus.fanSpeed=30;
+					break;
+				case 0xF30CFF00:
+					ir_value = '4';
+					fanStatus.fanSpeed=40;
+					break;
+				case 0xE718FF00:
+					ir_value = '5';
+					fanStatus.fanSpeed=50;
+					break;
+				case 0xA15EFF00:
+					ir_value = '6';
+					fanStatus.fanSpeed=60;
+					break;
+				case 0xF708FF00:
+					ir_value = '7';
+					fanStatus.fanSpeed=70;
+					break;
+				case 0xE31CFF00:
+					ir_value = '8';
+					fanStatus.fanSpeed=80;
+					break;
+				case 0xA55AFF00:
+					ir_value = '9';
+					fanStatus.fanSpeed=90;
+					break;
+				case 0xAD52FF00:
+					ir_value = '0';
+					fanStatus.fanSpeed=100;
+					break;
+				case 0xBD42FF00:
+					ir_value = '*';
+					  hAngle_state = !hAngle_state;
+					break;
+				case 0xB54AFF00:
+					ir_value = '#';
+					  vAngle_state = !vAngle_state;
+					break;
+				default:
+					ir_value = '\0';  // ?  �????? ?  ? ?��
+					break;
+			}
+		  }
+		    HAL_TIM_IC_Stop_IT(&htim5, TIM_CHANNEL_1);
+		    __HAL_TIM_CLEAR_IT(&htim5, TIM_IT_CC1);
+		    __HAL_TIM_CLEAR_FLAG(&htim5, TIM_FLAG_CC1);
+		    __HAL_TIM_SET_COUNTER(&htim5, 0);
+		    bitCount = 0;
+		    receivedData = 0;
+		    isStartCaptured = 0;
 
-	  //??��?��?�更?��??��?�傳給ESP32
-      if (fanStatus.fanState != oldFanState||fanStatus.fanSpeed != oldFanSpeed||fanStatus.hAngle != oldFanhAngle||fanStatus.vAngle != oldFanvAngle||oldtemperature!=temperature) {  // **?��?��??�改變�?�發??**
-          SendDataToESP32(fanStatus.fanState, fanStatus.fanSpeed, fanStatus.hAngle, fanStatus.vAngle,temperature);
-          oldFanState = fanStatus.fanState;
-          oldFanSpeed = fanStatus.fanSpeed;
-          oldFanhAngle = fanStatus.hAngle;
-          oldFanvAngle = fanStatus.vAngle;
-          oldtemperature = temperature;
-      }
+		    // 等待 100ms 再允許下一次解碼
+		    lastIRProcessTick = HAL_GetTick();
+
+		  HAL_TIM_IC_Start_IT(&htim5, TIM_CHANNEL_1);                // 重新啟動中斷
+
+//	  		if (ir_value != '\0') {
+//	  		  	sprintf(str,"IR char: %c\r\n", ir_value);
+//	  		  	HAL_UART_Transmit(&huart3, (uint8_t*)str, strlen(str), 100);
+//	  		}
+	  }
+	  if ((HAL_GetTick() - lastIRProcessTick) > 100) {
+	      if (bitCount == 0 && isStartCaptured == 0) {
+	          HAL_TIM_IC_Start_IT(&htim5, TIM_CHANNEL_1);
+	      }
+	  }
+	  //??  ?  ? ?��?  ??  ? ?��給ESP32
+//      if (fanStatus.fanState != oldFanState||fanStatus.fanSpeed != oldFanSpeed||fanStatus.hAngle != oldFanhAngle||fanStatus.vAngle != oldFanvAngle||oldtemperature!=temperature) {  // **?  ?  ?? ?���????? ? ?��??**
+//          SendDataToESP32(fanStatus.fanState, fanStatus.fanSpeed, fanStatus.hAngle, fanStatus.vAngle,temperature);
+//          oldFanState = fanStatus.fanState;
+//          oldFanSpeed = fanStatus.fanSpeed;
+//          oldFanhAngle = fanStatus.hAngle;
+//          oldFanvAngle = fanStatus.vAngle;
+//          oldtemperature = temperature;
+//      }
 
       //AccessPort顯示
-      sprintf(str,"State: %d\r\n Speed: %d%%\r\n hAngle_state: %d\r\n hAngle: %d\r\n vAngle_state: %d\r\n vAngle: %d\r\n T: %f\r\n tempKey: %c\r\n PIR_Flags: %d\r\n",fanStatus.fanState,fanStatus.fanSpeed,hAngle_state,(int)(fanStatus.hAngle*1.8),vAngle_state,(int)(fanStatus.vAngle*0.9),temperature,tempKey,PIR_Flags);
+      sprintf(str,"State: %d\r\n Speed: %d%%\r\n hAngle_state: %d\r\n hAngle: %d\r\n vAngle_state: %d\r\n vAngle: %d\r\n T: %f\r\n ",fanStatus.fanState,fanStatus.fanSpeed,hAngle_state,(int)(fanStatus.hAngle*1.8),vAngle_state,(int)(fanStatus.vAngle*0.9),temperature);
+	  HAL_UART_Transmit(&huart3, (uint8_t*)str, strlen(str), 100);
+      sprintf(str,"tempKey: %c\r\n PIR_Flags: %d\r\n IR: %c\r\n",tempKey,PIR_Flags,ir_value);
 	  HAL_UART_Transmit(&huart3, (uint8_t*)str, strlen(str), 100);
       if (HAL_GetTick() - lastUpdate >= 500) {
-          lastUpdate = HAL_GetTick(); // ?��?��??��??
+          lastUpdate = HAL_GetTick(); // ?  ?  ??  ??
           LCD_Clear();
-          sprintf(strC1,"F%d S:%d T:%d P:%d",fanStatus.fanState,fanStatus.fanSpeed,(int)temperature,PIR_Flags);
+          sprintf(strC1,"F%dS:%d T:%d P:%dIR:%c",fanStatus.fanState,fanStatus.fanSpeed,(int)temperature,PIR_Flags,ir_value);
 		  LCD_SetCursor(0, 0);
 		  LCD_Print(strC1);
 		  sprintf(strC2,"h%d %3d v%d %2d K:%c",hAngle_state,(int)(fanStatus.hAngle*1.8),vAngle_state,(int)(fanStatus.vAngle*0.9),tempKey);
@@ -305,7 +437,7 @@ int main(void)
 	  memset(str, 0, sizeof(str));
 	  memset(strC1, 0, sizeof(strC1));
 	  memset(strC2, 0, sizeof(strC2));
-	  HAL_Delay(100);
+	  HAL_Delay(500);
 
 //      */
 
@@ -655,6 +787,64 @@ static void MX_TIM4_Init(void)
 }
 
 /**
+  * @brief TIM5 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM5_Init(void)
+{
+
+  /* USER CODE BEGIN TIM5_Init 0 */
+
+  /* USER CODE END TIM5_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_IC_InitTypeDef sConfigIC = {0};
+
+  /* USER CODE BEGIN TIM5_Init 1 */
+
+  /* USER CODE END TIM5_Init 1 */
+  htim5.Instance = TIM5;
+  htim5.Init.Prescaler = 83;
+  htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim5.Init.Period = 0xFFFFFFFF;
+  htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim5.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim5, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_IC_Init(&htim5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim5, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
+  sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
+  sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
+  sConfigIC.ICFilter = 0;
+  if (HAL_TIM_IC_ConfigChannel(&htim5, &sConfigIC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM5_Init 2 */
+
+  /* USER CODE END TIM5_Init 2 */
+
+}
+
+/**
   * @brief USART3 Initialization Function
   * @param None
   * @retval None
@@ -910,6 +1100,50 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
         }
     }
 }
+static uint32_t lastIRTick = 0;
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+{
+    if(htim->Instance == TIM5)  // <- �????? ? ?��? �?????
+    {
+    	uint32_t now = HAL_GetTick();
+		if (now - lastIRTick > 100) {
+			// 如果超過 100ms 沒收到下一個bit，就 reset 掉狀態
+			bitCount = 0;
+			receivedData = 0;
+			isStartCaptured = 0;
+		}
+		lastIRTick = now;
+        if(0 == bitCount && 0 == isStartCaptured && 0 == receivedData)
+        {
+            isStartCaptured = 1;
+        }
+        else if(0 == bitCount && 1 == isStartCaptured && 0 == receivedData)
+        {
+            __HAL_TIM_SET_COUNTER(&htim5, 0);
+            isStartCaptured = 2;
+        }
+        else if(32 > bitCount)
+        {
+            IC_Value = HAL_TIM_ReadCapturedValue(&htim5, TIM_CHANNEL_1);
+            __HAL_TIM_SET_COUNTER(&htim5, 0);
+
+            if(1000 < IC_Value && 1300 > IC_Value)
+            {
+                receivedData &= ~(1 << bitCount);
+            }
+            if(2100 < IC_Value && 2400 > IC_Value)
+            {
+                receivedData |= (1 << bitCount);
+            }
+            bitCount++;
+            if(bitCount == 32)
+                HAL_TIM_IC_Stop_IT(&htim5, TIM_CHANNEL_1);  // <- ? 裡�?? ??
+        }
+    }
+}
+
+
+
 /* USER CODE END 4 */
 
 /**

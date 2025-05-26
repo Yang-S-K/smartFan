@@ -1,0 +1,102 @@
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { motion } from "framer-motion";
+
+export default function SmartFanControl() {
+  const [isFanOn, setIsFanOn] = useState(false);
+  const [speed, setSpeed] = useState([50]);
+  const [autoX, setAutoX] = useState(false);
+  const [autoY, setAutoY] = useState(false);
+  const [temperature, setTemperature] = useState(25);
+  const [battery, setBattery] = useState(80);
+  const [xAxis, setXAxis] = useState(90);
+  const [yAxis, setYAxis] = useState(45);
+  const [xSelected, setXSelected] = useState(null);
+  const [ySelected, setYSelected] = useState(null);
+
+  const handleXDirection = (value) => {
+    setAutoX(false);
+    setXAxis(value);
+    setXSelected(value);
+  };
+  
+  const handleYDirection = (value) => {
+    setAutoY(false);
+    setYAxis(value);
+    setYSelected(value);
+  };
+
+  const toggleAutoX = () => {
+    setAutoX(!autoX);
+    if (!autoX) {
+      setXSelected(null);
+    }
+  };
+  const toggleAutoY = () => {
+    setAutoY(!autoY);
+    if (!autoY) {
+      setYSelected(null);
+    }
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }} className="flex flex-col items-center min-h-screen bg-gradient-to-b from-gray-900 to-gray-700 text-white p-6">
+      <motion.h1 initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.8 }} className="text-3xl font-bold mb-6 text-yellow-400">智能電風扇控制</motion.h1>
+      
+      <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.8 }}>
+        <Card className="w-full max-w-md p-4 bg-gray-800 rounded-2xl shadow-lg">
+          <CardContent className="flex flex-col space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-yellow-300">總開關</span>
+              <Switch checked={isFanOn} onCheckedChange={() => setIsFanOn(!isFanOn)} />
+            </div>
+            {isFanOn && (
+              <>
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-yellow-300">溫度: {temperature}°C</span>
+                    <span className="text-yellow-300">電池: {battery}%</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-yellow-300">風速</span>
+                    <Slider value={speed} onValueChange={(val) => setSpeed([val[0]])} min={0} max={100} className="w-2/3" />
+                    <span className="text-yellow-300">{speed[0]}%</span>
+                  </div>
+                </motion.div>
+                <motion.div initial={{ x: -50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.5 }}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-yellow-300">X 軸位置 ({xAxis}°)</span>
+                    <Slider value={[xAxis]} onValueChange={(val) => handleXDirection(val[0])} min={0} max={180} className="w-2/3" />
+                  </div>
+                </motion.div>
+                <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5 }}>
+                  <div className="grid grid-cols-4 gap-2">
+                    <Button onClick={() => handleXDirection(0)} variant="outline" className={xSelected === 0 ? "bg-blue-500 text-white" : ""}>左</Button>
+                    <Button onClick={() => handleXDirection(90)} variant="outline" className={xSelected === 90 ? "bg-blue-500 text-white" : ""}>中</Button>
+                    <Button onClick={() => handleXDirection(180)} variant="outline" className={xSelected === 180 ? "bg-blue-500 text-white" : ""}>右</Button>
+                    <Button onClick={toggleAutoX} variant="outline" className={autoX ? "bg-green-500 text-white" : ""}>自動</Button>
+                  </div>
+                </motion.div>
+                <motion.div initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ duration: 0.5 }}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-yellow-300">Y 軸位置 ({yAxis}°)</span>
+                    <Slider value={[yAxis]} onValueChange={(val) => handleYDirection(val[0])} min={0} max={90} className="w-2/3" />
+                  </div>
+                  <div className="grid grid-cols-4 gap-2 mt-2">
+                    <Button onClick={() => handleYDirection(0)} variant="outline" className={ySelected === 0 ? "bg-blue-500 text-white" : ""}>上</Button>
+                    <Button onClick={() => handleYDirection(45)} variant="outline" className={ySelected === 45 ? "bg-blue-500 text-white" : ""}>中</Button>
+                    <Button onClick={() => handleYDirection(90)} variant="outline" className={ySelected === 90 ? "bg-blue-500 text-white" : ""}>下</Button>
+                    <Button onClick={toggleAutoY} variant="outline" className={autoY ? "bg-green-500 text-white" : ""}>自動</Button>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+    </motion.div>
+  );
+}

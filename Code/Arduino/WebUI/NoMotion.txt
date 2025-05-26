@@ -1,0 +1,132 @@
+import { useState } from "react";
+
+export default function SmartFanControl() {
+  const [isFanOn, setIsFanOn] = useState(false);
+  const [speed, setSpeed] = useState([50]);
+  const [autoX, setAutoX] = useState(false);
+  const [autoY, setAutoY] = useState(false);
+  const [temperature, setTemperature] = useState(25);
+  const [battery, setBattery] = useState(80);
+  const [xAxis, setXAxis] = useState(90);
+  const [yAxis, setYAxis] = useState(45);
+  const [xSelected, setXSelected] = useState(null);
+  const [ySelected, setYSelected] = useState(null);
+
+  const handleXDirection = (value) => {
+    setAutoX(false);
+    setXAxis(value);
+    setXSelected(value);
+  };
+  
+  const handleYDirection = (value) => {
+    setAutoY(false);
+    setYAxis(value);
+    setYSelected(value);
+  };
+
+  const toggleAutoX = () => {
+    setAutoX(!autoX);
+    if (!autoX) {
+      setXSelected(null);
+    }
+  };
+  const toggleAutoY = () => {
+    setAutoY(!autoY);
+    if (!autoY) {
+      setYSelected(null);
+    }
+  };
+
+  return (
+    <div className="container">
+      <h1 className="title">智能電風扇控制</h1>
+      <div className="card">
+        <div className="control-row">
+          <span>總開關</span>
+          <input type="checkbox" checked={isFanOn} onChange={() => setIsFanOn(!isFanOn)} />
+        </div>
+        {isFanOn && (
+          <>
+            <div className="control-row">
+              <span>溫度: {temperature}°C</span>
+              <span>電池: {battery}%</span>
+            </div>
+            <div className="control-row">
+              <span>風速</span>
+              <input type="range" value={speed} onChange={(e) => setSpeed([e.target.value])} min={0} max={100} />
+              <span>{speed[0]}%</span>
+            </div>
+            <div className="control-row">
+              <span>X 軸位置 ({xAxis}°)</span>
+              <input type="range" value={xAxis} onChange={(e) => handleXDirection(parseInt(e.target.value))} min={0} max={180} />
+            </div>
+            <div className="button-group">
+              <button onClick={() => handleXDirection(0)} className={xSelected === 0 ? "selected" : ""}>左</button>
+              <button onClick={() => handleXDirection(90)} className={xSelected === 90 ? "selected" : ""}>中</button>
+              <button onClick={() => handleXDirection(180)} className={xSelected === 180 ? "selected" : ""}>右</button>
+              <button onClick={toggleAutoX} className={autoX ? "selected-auto" : ""}>自動</button>
+            </div>
+            <div className="control-row">
+              <span>Y 軸位置 ({yAxis}°)</span>
+              <input type="range" value={yAxis} onChange={(e) => handleYDirection(parseInt(e.target.value))} min={0} max={90} />
+            </div>
+            <div className="button-group">
+              <button onClick={() => handleYDirection(0)} className={ySelected === 0 ? "selected" : ""}>上</button>
+              <button onClick={() => handleYDirection(45)} className={ySelected === 45 ? "selected" : ""}>中</button>
+              <button onClick={() => handleYDirection(90)} className={ySelected === 90 ? "selected" : ""}>下</button>
+              <button onClick={toggleAutoY} className={autoY ? "selected-auto" : ""}>自動</button>
+            </div>
+          </>
+        )}
+      </div>
+      <style>{`
+        .container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 20px;
+          font-family: Arial, sans-serif;
+          background-color: #222;
+          color: white;
+          min-height: 100vh;
+        }
+        .title {
+          font-size: 24px;
+          margin-bottom: 20px;
+        }
+        .card {
+          width: 300px;
+          padding: 20px;
+          border: 1px solid #555;
+          border-radius: 10px;
+          background-color: #333;
+        }
+        .control-row {
+          display: flex;
+          justify-content: space-between;
+          margin: 10px 0;
+        }
+        .button-group {
+          display: flex;
+          justify-content: space-between;
+          margin-top: 10px;
+        }
+        .button-group button {
+          padding: 5px 10px;
+          border: 1px solid #777;
+          background: #444;
+          color: white;
+          cursor: pointer;
+        }
+        .selected {
+          background-color: #0057e7;
+          color: white;
+        }
+        .selected-auto {
+          background-color: #008000;
+          color: white;
+        }
+      `}</style>
+    </div>
+  );
+}

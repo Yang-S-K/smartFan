@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 extern UART_HandleTypeDef huart6;
-static FanData fanData = {0, 0, 0, 0};  // 預設數值
+static FanData fanData = {0, 0, 50, 50};  // 預設數值
 
 // **解析 ESP32 傳送的數據**
 void ESP32_UART_Receive(void) {
@@ -12,7 +12,6 @@ void ESP32_UART_Receive(void) {
 	  uint8_t temp;
 	  uint8_t index = 0;
 	  memset(buffer, 0, sizeof(buffer));  // 清除 testBuffer
-
 	  // **逐字讀取直到遇到 `\n` 或 `\r`**
 	  while (index < sizeof(buffer) - 1) {
 	      if (HAL_UART_Receive(&huart6, &temp, 1, 500) == HAL_OK) {  // 增加 timeout
@@ -38,6 +37,7 @@ void ESP32_UART_Receive(void) {
 	  if (token) fanData.vAngle = atoi(token);
 
 }
+
 void SendDataToESP32(int fanState, int fanSpeed, int hAngle, int vAngle,float temperature) {
     char txBuffer[50];
     sprintf(txBuffer, "%d,%d,%d,%d,%f\n", fanState, fanSpeed, hAngle, vAngle,temperature);

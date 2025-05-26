@@ -7,8 +7,8 @@ char strServo[100];
 
 
 void Calibrate_Servo_Zero(void) {
-	    Set_Servo_Angle(0, 180); // 讓 180° 伺服馬達回正中間
-	    Set_Servo_Angle(0, 360); // 讓 360° 伺服馬達回正中間（停止狀態）
+	    Set_Servo_Angle(90, 180); // 讓 180° 伺服馬達回正中間
+	    Set_Servo_Angle(180, 360); // 讓 360° 伺服馬達回正中間（停止狀態）
 }
 
 
